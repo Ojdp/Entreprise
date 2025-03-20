@@ -9,38 +9,29 @@
 # but lucratif au service des ménages (ISBLSM) (S.15)
 # ======================================================================== #
 
-
-# install.packages(c("stargazer","ggthemes", "eurostat","ofce","parallel","lubridate",
-#                    "ggplot2","plotrix","Hmisc","readxl","httr","data.table","insee",
-#                    "writexl","tidyverse","zoo","devtools","writexl","Rtools","inseeLocalData",
-#                    "ggsci","systemfonts"))
-# devtools::install_github("OFCE/ofce")
-# devtools::install_github("oddworldng/INEbaseR")
-
-library(tidyverse)  # inclut dplyr, ggplot2, readr, etc.
-library(data.table)  # gestion rapide des données
-library(lubridate)   # manipulation des dates
-library(insee)       # données INSEE
-library(readxl)      # lecture des fichiers Excel
-library(writexl)     # export en Excel
-library(scales)      # échelles ggplot2
-library(ggthemes)    # thèmes ggplot2
+library(tidyverse) 
+library(lubridate)   
+library(insee)       
+library(readxl)      
+library(writexl)   
 library(zoo)                                                                                                                                                                                                                                                                                       
-library(magrittr)
-library(openxlsx)
 library(systemfonts)
 library(ofce)
 
-# Date base pour la construction de l'index
-DateIndex <- "2019-10-01"
+# Dates base pour la construction de l'index
+if (!exists("DateIndex")){DateIndex <- "2019-10-01"} 
+if (!exists("AnneeRef")){AnneeRef <- "2018"} 
+if (!exists("DateRef")){DateRef <- "2018-10-01"} 
 
 # Liste des bases de l'Insee
-bases <- get_dataset_list()
+# bases <- get_dataset_list()
 
 
 
 # 1. CNT - Comptes des branches (CB) -------------------------------------------
 # Paramètres séries à garder : VA par branches trimestrielle et Excédent Brut d'Exploitation
+
+
 
 ## 1.1. VA par branches -----------------------------------------------------
 
@@ -56,11 +47,9 @@ dataVA <- get_insee_dataset("CNT-2020-CB")%>%
                             "DI-CNT", "DIM-CNT", "DSM-CNT", "SMNA-CNT"))%>%
   filter(OPERATION %in% c("B1")) %>%
   filter(VALORISATION == "L")%>%
-  split_title()%>%
-  select(DATE,OBS_VALUE,TITLE_FR1,TITLE_FR2)%>%
-  arrange(DATE, TITLE_FR2) %>% 
-  rename(value = OBS_VALUE,
-         name = TITLE_FR2)%>%
+  split_title() %>%
+  select(DATE, value=OBS_VALUE, TITLE_FR1, name=TITLE_FR2)%>%
+  arrange(DATE, name) %>% 
   group_by(name)%>%
   mutate(Index = value / value[DATE == DateIndex] * 100, # comparaison avec 2019 = 100
          Croissance = (value - lag(value, n = 4)) / lag(value, n = 4) * 100) # taux de croissance annuel
@@ -71,7 +60,7 @@ dataVA <- get_insee_dataset("CNT-2020-CB")%>%
 # Opération B2 = Excédent Brut d'Exploitation
 # CNA produit = tout sauf "DSN-CNT" (services principalement non marchands) et "DS-CNT" (services)
 
-dataEBE_wide <- get_insee_dataset("CNT-2020-CB")%>%
+dataEBE <- get_insee_dataset("CNT-2020-CB")%>%
   filter(CORRECTION=="CVS-CJO")%>%
   filter(CNA_PRODUIT %in% c("A17-AZ", "A17-C1", "A17-C2", "A17-C3", "A17-C4", "A17-C5", 
                             "A17-DE", "A17-FZ", "A17-GZ", "A17-HZ", "A17-IZ", "A17-JZ", 
@@ -79,12 +68,8 @@ dataEBE_wide <- get_insee_dataset("CNT-2020-CB")%>%
                             "DI-CNT", "DIM-CNT", "DSM-CNT", "SMNA-CNT"))%>%
   filter(OPERATION %in% c("B2")) %>%
   split_title()%>%
-  select(DATE,OBS_VALUE,TITLE_FR2)%>%
-  arrange(DATE,TITLE_FR2)%>%
-  pivot_wider(names_from = TITLE_FR2, values_from = OBS_VALUE, names_sep = "_")
-
-dataEBE <- dataEBE_wide %>%
-  pivot_longer(cols = -c(DATE)) %>%
+  select(DATE, value=OBS_VALUE, name=TITLE_FR2)%>%
+  arrange(DATE, name) %>% 
   mutate(Index = value / value[DATE == DateIndex] * 100)%>%
   group_by(name)%>%
   mutate(Croissance = (value - lag(value, n = 4)) / lag(value, n = 4) * 100)
@@ -92,30 +77,109 @@ dataEBE <- dataEBE_wide %>%
 
 ## 1.3. Marges -----------------------------------------------------
 
-# Questions :
-# à quoi ressemble le fichier excel ?
-# pourquoi y a total = total branches - services non marchands - agri, ça représente quoi ?
+# Taux de marge = EBE / VA brute en valeur
 
-# # Contribution à l'EBE par branche (partie à recoder)/ Marge
-# 
-# datamarge <- bind_rows(dataVA, dataEBE_wide) %>%
-#   mutate(Total = `Total branches` - `Services non marchands` - `Agriculture`)%>%
-#   pivot_longer(cols = -c(DATE, name)) %>%
-#   group_by(DATE, name) %>%
-#   arrange(DATE) 
-# 
-# marge_rows <- datamarge %>%
-#   group_by(DATE, name) %>%
-#   summarise(value = (value[OPERATION_label_fr == "B2 - Excédent d'exploitation"] / value[OPERATION_label_fr == "B1 - Valeur ajoutée"]) * 100, .groups = 'drop') %>%
-#   mutate(OPERATION_label_fr = "Marge") %>%
-#   mutate(Index = value / value[DATE == "2019-10-01"] * 100)
-# 
-# 
-# file_path <- "C:/Users/153003/Documents/Entreprise/Marge.xlsx" 
-# 
-# Marge <- read_excel(file_path) %>%
-#   pivot_longer(cols = -c(DATE)) %>%
-#   mutate(DATE = as.Date(DATE) )
+# On s'intéresse aux ENF donc le Total c'est "Marchand non agricole"
+# Ou alors calcul du Total en enlevant aussi les services financiers, pour avoir les ENF
+# --> que choisir ?
+
+dataMarge <- get_insee_dataset("CNT-2020-CB") %>%
+  filter(CORRECTION=="CVS-CJO") %>%
+  filter(CNA_PRODUIT %in% c("A17-AZ", "A17-C1", "A17-C2", "A17-C3", "A17-C4", "A17-C5", 
+                            "A17-DE", "A17-FZ", "A17-GZ", "A17-HZ", "A17-IZ", "A17-JZ", 
+                            "A17-KZ", "A17-LZ", "A17-MN", "A17-OQ", "A17-RU", "D-CNT", 
+                            "DI-CNT", "DIM-CNT", "DSM-CNT", "SMNA-CNT")) %>%
+  filter(OPERATION %in% c("B1","B2")) %>%
+  filter(VALORISATION != "L") %>%   #VA en valeur et pas volume
+  split_title() %>%
+  select(DATE, OBS_VALUE, operation=TITLE_FR1, name=TITLE_FR2) %>%
+  arrange(DATE, name) %>% 
+  pivot_wider(names_from = name, values_from = OBS_VALUE, names_sep = "_") %>%
+  mutate(`Marchand non agricole non financier` = `Marchand non agricole` - `Services financiers`) %>%
+  pivot_longer(cols=-c(DATE,operation)) %>% 
+  pivot_wider(names_from = operation, values_from = value, names_sep = "_")
+
+# Calcul du taux de marge, croissance et contributions des branches
+dataMarge <- dataMarge %>%  
+  arrange(DATE, name) %>% 
+  group_by(DATE) %>% 
+  mutate(
+    TxMarge = `Excédent brut d'exploitation`/`Valeur ajoutée des branches` *100,
+    partVA = (`Valeur ajoutée des branches`/`Valeur ajoutée des branches`[name == "Marchand non agricole"] *100),
+    # partVA_NF = (`Valeur ajoutée des branches`/`Valeur ajoutée des branches`[name == "Marchand non agricole non financier"] *100)
+  ) %>% 
+  group_by(name) %>% 
+  mutate(
+    Index = TxMarge / TxMarge[DATE==DateIndex] *100
+  ) %>% 
+  mutate(
+    CroissanceAnnuelle = (TxMarge - lag(TxMarge, n = 4)) / lag(TxMarge, n = 4) * 100,
+    CroissanceTrim = (TxMarge - lag(TxMarge, n = 1)) / lag(TxMarge, n = 1) * 100,
+    CroissanceDateBase = (TxMarge - TxMarge[DATE== DateRef]) /  TxMarge[DATE== DateRef] * 100,
+    CroissanceAnneeMoyBase = (TxMarge - mean(TxMarge[format(DATE, "%Y") == AnneeRef], na.rm = TRUE)) / mean(TxMarge[format(DATE, "%Y") == AnneeRef], na.rm = TRUE) * 100
+  ) %>% 
+  mutate(
+    VarTxMargeAnnuelle = TxMarge - lag(TxMarge, n = 4),
+    VarTxMargeTrim = TxMarge - lag(TxMarge, n = 1),
+    VarTxMargeDateBase = TxMarge - TxMarge[DATE== DateRef],
+    VarTxMargeAnneeMoyBase = TxMarge - mean(TxMarge[format(DATE, "%Y") == AnneeRef], na.rm = TRUE)
+  ) %>%
+  mutate(
+    ContributionAnnuelle = VarTxMargeAnnuelle * lag(partVA, n = 4) /100,
+    ContributionTrim = VarTxMargeTrim * lag(partVA, n = 1) /100,
+    ContributionDateBase = VarTxMargeDateBase * (partVA[DATE==DateRef])/100,
+    ContributionAnneeMoyBase = VarTxMargeAnneeMoyBase * mean(partVA[format(DATE, "%Y") == AnneeRef], na.rm = TRUE) /100
+  )
+
+
+
+# Tests pour comprendre pourquoi contrib Industrie != contrib Energie + contrib Manuf
+# Test pour comprendre décomposition contributions
+contribMarge <- dataMarge %>% 
+  select(DATE, name, ContributionAnneeMoyBase) %>% 
+  pivot_wider(names_from = name, values_from = ContributionAnneeMoyBase) %>% 
+  mutate(
+    `Total` = `Autres branches industrielles` + `Commerce` + `Construction` + `Services aux entreprises` +
+      `Hébergement-restauration` + `Industries agro-alimentaires` + `Énergie, eau, déchets` + `Services immobiliers` + 
+      `Information-communication` + `Services financiers` + `Transport` + `Biens d'équipement` + `Matériels de transport` + 
+      `Services aux ménages`,
+    `Total_ag` = `Construction` + `Énergie, eau, déchets` + `Biens manufacturés` + `Services principalement marchands`,
+    `Total_agag` = `Construction` + `Industrie` + `Services principalement marchands`
+  ) %>% 
+  select(DATE, `Marchand non agricole`, `Total`, `Total_ag`, `Total_agag`, everything())
+# Verif part VA
+test <- dataMarge %>%
+  filter(name %in% c("Industrie", "Énergie, eau, déchets", "Biens manufacturés")) %>%
+  group_by(DATE) %>%
+  summarise(
+    partVA_Industrie = sum(partVA[name == "Industrie"]),
+    partVA_Somme = sum(partVA[name %in% c("Énergie, eau, déchets", "Biens manufacturés")]),
+    Difference = partVA_Industrie - partVA_Somme
+  ) # OK
+# Verif egalité taux marge
+test <- dataMarge %>%
+  filter(name %in% c("Industrie", "Énergie, eau, déchets", "Biens manufacturés")) %>%
+  group_by(DATE) %>%
+  summarise(
+    TxMarge_Industrie = mean(TxMarge[name == "Industrie"], na.rm = TRUE),
+    TxMarge_Calculée = sum(partVA[name == "Énergie, eau, déchets"] * TxMarge[name == "Énergie, eau, déchets"] + 
+                             partVA[name == "Biens manufacturés"] * TxMarge[name == "Biens manufacturés"]) /
+      sum(partVA[name %in% c("Énergie, eau, déchets", "Biens manufacturés")]),
+    Difference = TxMarge_Industrie - TxMarge_Calculée
+  ) # OK
+# Verif egalité variation taux marge
+test <- dataMarge %>%
+  filter(name %in% c("Industrie", "Énergie, eau, déchets", "Biens manufacturés")) %>%
+  group_by(DATE) %>%
+  summarise(
+    VarTxMarge_Industrie = sum(VarTxMargeAnneeMoyBase[name == "Industrie"]),
+    VarTxMarge_Calculée = sum((partVA[name == "Énergie, eau, déchets"] * VarTxMargeAnneeMoyBase[name == "Énergie, eau, déchets"] +
+                                 partVA[name == "Biens manufacturés"] * VarTxMargeAnneeMoyBase[name == "Biens manufacturés"])) /
+      sum(partVA[name %in% c("Énergie, eau, déchets", "Biens manufacturés")]),
+    Difference = VarTxMarge_Industrie - VarTxMarge_Calculée
+  ) # Non
+
+
 
 
 
@@ -130,7 +194,7 @@ dataEBE <- dataEBE_wide %>%
 # CNA produit = tout sauf : "DB-CNT" (biens), "DI-CNT" (biens industriels), "DIM-CNT" 
 # (biens manufacturés), "DS-CNT" (services), "DSM-CNT" (services marchands)
 
-dataFBCF_wide <- get_insee_dataset("CNT-2020-OPERATIONS")%>%
+dataFBCF <- get_insee_dataset("CNT-2020-OPERATIONS")%>%
   filter(CORRECTION=="CVS-CJO")%>%
   filter(CNA_PRODUIT %in% c("A17-AZ", "A17-C1", "A17-C2", "A17-C3", "A17-C4", "A17-C5",
                             "A17-DE", "A17-FZ", "A17-GZ", "A17-HZ", "A17-IZ", "A17-JZ",
@@ -145,9 +209,7 @@ dataFBCF_wide <- get_insee_dataset("CNT-2020-OPERATIONS")%>%
   mutate(
     Autres = `Services aux ménages` + `Produits agricoles` + `Autres produits industriels` + `Services immobiliers`,
     Total = `Services aux ménages` + `Produits agricoles` + `Autres produits industriels` + `Services immobiliers` + `Biens d'équipement` + `Construction` + `Matériels de transport` + `Information-communication` + `Services aux entreprises`
-  )
-
-dataFBCF <- dataFBCF_wide %>%
+  ) %>%
   pivot_longer(cols = -c(DATE, TITLE_FR3)) %>%
   group_by(TITLE_FR3, name) %>%
   arrange(DATE) %>%
@@ -171,7 +233,7 @@ dataFBCF <- dataFBCF_wide %>%
 
 # 3. CNT - Comptes de secteurs institutionnels (CSI) -------------------------------------------
 
-# Regarder le taux d'investissement pour les SNF totales 
+# Regarder les taux d'investissement et de marge pour les SNF totales 
 
 ## 3.1. SNF : Taux d'investissement, marges, autofin -----------------------------------------------------
 
@@ -201,9 +263,9 @@ dataTotal <- get_insee_dataset("CNT-2020-CSI") %>%
 # 4. Ajout prévisions -------------------------------------------
 
 dataPrev <- data.frame(
-  DATE = as.Date(c("2024-10-01", "2025-01-01", "2025-04-01", "2025-07-01", "2025-10-01")),
-  Tx_Marge = c(30.6,30.8,31.1,31.3, 31.3),
-  Tx_Invest = c(22.78,22.78, 22.78,22.8, 22.82))
+  DATE = as.Date(c("2025-01-01", "2025-04-01", "2025-07-01", "2025-10-01", "2026-01-01", "2026-04-01", "2026-07-01", "2026-10-01")),
+  Tx_Marge = c(32.1, 32.1, 32.1, 32.1, 32.1, 32.1, 32.1, 32.1),
+  Tx_Invest = c(22.1, 22.1, 22.1, 22.1, 22.1, 22.1, 22.1, 22.1))
 
 dataTotal_wide <- dataTotal %>%
   filter(name %in% c("Tx_Invest", "Tx_Marge"))%>%

@@ -12,7 +12,7 @@ moyenne_croissance <- EncoursCredit %>%
   summarise(moyenne_croissance = mean(Croissance, na.rm = TRUE))
 
 total_treso <- EncoursCredit %>%
-  filter(date >= "2020-06-01" & date <= "2021-12-01" & Variable == "EncoursTresorie") %>%
+  filter(date >= "2020-06-01" & date <= "2021-12-01" & Variable == "EncoursTresorerie") %>%
   summarise(total_treso = sum(Valeur, na.rm = TRUE))
 
 date_debut <- as.Date("2020-05-01")
@@ -30,48 +30,48 @@ cat("La moyenne de la croissance entre", date_debut, "et", date_fin, "est :", mo
 
 ## valeur -----------------------------------------------------
 ggplot() +
-  geom_line(data = EncoursCredit %>% filter( Variable == "Total"),
+  geom_line(data = EncoursCredit %>% filter(Variable == "Total"),
             aes(x = as.Date(date), y = Valeur),
-            color = "black", size = 0.8) + 
+            color = "black") + 
   labs(
     caption = "Source: Banque de France",
     title = "",
     x = "",
-    y = "Contribution en pourcentage à la croissance totale"
+    y = "en millions d'euros",
+    color = NULL
   ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size= 8.5)) +
-  theme(legend.position = "bottom") +  
-  scale_y_continuous(limits = c(400000, 1466851), labels = scales::label_number(decimal.mark = ",")) +
-  scale_x_date(limits = as.Date(c("1993-04-01", max(EncoursCredit$date))), expand = c(0, 0)) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_fill_brewer(palette = "Set1") +
-  guides(fill = guide_legend(title = NULL))
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
+  scale_y_continuous(limits = c(600000, 1500000), labels = scales::label_number(decimal.mark = ",")) +
+  scale_x_date(limits = as.Date(c("2011-01-01", max(EncoursCredit$date))), expand = c(0, 0)) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +
+  ggtitle("Encours total des crédits bancaires des SNF")
+  
+  
 
 ## indice base 2019=100 -----------------------------------------------------
 ggplot() +
   geom_line(data = EncoursCredit %>% filter( Variable == "Total"),
             aes(x = as.Date(date), y = Index),
-            color = "black", size = 0.8) + 
+            color = "black") + 
   labs(
     caption = "Source: Banque de France",
     title = "",
     x = "",
-    y = "Contribution en pourcentage à la croissance totale"
+    y = "indice base 2019=100",
+    color = NULL
   ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size= 8.5)) +
-  theme(legend.position = "bottom") +  
-  scale_y_continuous(limits = c(80, 130), labels = scales::label_number(decimal.mark = ",")) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
+  scale_y_continuous(limits = c(80, 140), labels = scales::label_number(decimal.mark = ",")) +
   scale_x_date(limits = as.Date(c("2015-01-01", max(EncoursCredit$date))), expand = c(0, 0)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
-  scale_fill_brewer(palette = "Set1") +
-  guides(fill = guide_legend(title = NULL))
+  ggtitle("Encours total des crédits bancaires des SNF")
 
 
 # 3. Série temporelle de l'encours des crédits de trésorerie -------------------------------------------
 
 ## indice base 2019=100 -----------------------------------------------------
 ggplot() +
-  geom_line(data = EncoursCredit %>% filter( Variable == "Tresorie"),
+  geom_line(data = EncoursCredit %>% filter( Variable == "Tresorerie"),
             aes(x = as.Date(date), y = Index),
             color = "black", size = 0.8) + 
   labs(
@@ -90,7 +90,7 @@ ggplot() +
 
 ## croissance -----------------------------------------------------
 ggplot() +
-  geom_line(data = EncoursCredit %>% filter( Variable == "Tresorie"),
+  geom_line(data = EncoursCredit %>% filter( Variable == "Tresorerie"),
             aes(x = as.Date(date), y = Croissance),
             color = "black", size = 0.8) + 
   labs(
@@ -115,9 +115,8 @@ ggplot() +
 ## 4.1. Contribution à la croissance mensuelle -----------------------------------------------------
 
 # en barres
-GraphContribEncours <- ggplot(aes(x = as.Date(date), y = Contribution), data = EncoursCredit) +
-  geom_bar(data = EncoursCredit %>% 
-             filter(!Variable %in% c("Total", "EncoursInvestissement")),
+GraphContribEncours <- ggplot(data = EncoursCredit, aes(x = as.Date(date), y = Contribution)) +
+  geom_bar(data = EncoursCredit %>% filter(!Variable %in% c("Total", "EncoursInvestissement")),
            aes(fill = Variable), 
            position = "stack", stat = "identity", alpha = .8) +  
   geom_line(data = filter(EncoursCredit, Variable == "Total"),
@@ -126,16 +125,17 @@ GraphContribEncours <- ggplot(aes(x = as.Date(date), y = Contribution), data = E
     caption = "Source: Banque de France",
     title = "",
     x = "",
-    y = "Contribution en pourcentage à la croissance totale"
+    y = "Contribution à la croissance de l'encours total (en pp)",
+    fill = NULL
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size= 8.5)) +
   theme(legend.position = "bottom") +  
   scale_y_continuous(limits = c(-5, 15), labels = scales::label_number(decimal.mark = ",")) +
-  scale_x_date(limits = as.Date(c("2010-04-01", max(EncoursCredit$date))), expand = c(0, 0)) +
+  scale_x_date(limits = as.Date(c("2011-01-01", max(EncoursCredit$date))), expand = c(0, 0)) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) + 
   scale_fill_brewer(palette = "Set1") +
-  guides(fill = guide_legend(title = NULL))
-
+  ggtitle("Contribution à la croissance mensuelle de l'encours total")
+  
 GraphContribEncours
 
 # avec des lignes (- lisible)
@@ -239,7 +239,7 @@ CroissanceCrises
 GraphCredit1<- ggplot(data = EncoursCredit %>%
                         mutate(date = as.Date(date)) %>%
                         filter(!Variable %in% c("Equipement","Immobilier"))) +
-  geom_line(aes(x = date, y = Croissance, color = Variable), show.legend = TRUE) +
+  geom_line(aes(x = date, y = CroissanceAnnuelle, color = Variable), show.legend = TRUE) +
   labs(
     caption = "Source: Banque de France",
     y = NULL,
@@ -256,7 +256,7 @@ GraphCredit1
 
 GraphCredit2<- ggplot(data = EncoursCredit %>%
                         mutate(date = as.Date(date)), 
-                      aes(x = date, y = Croissance, color = Variable)) +
+                      aes(x = date, y = CroissanceAnnuelle, color = Variable)) +
   geom_line(show.legend = TRUE) +
   labs(
     caption = "Source: Banque de France",
@@ -294,7 +294,7 @@ GraphCredit3
 
 ## trésorie, millions d'€ -----------------------------------------------------
 ggplot(data = EncoursCredit %>%
-         filter(Variable =="Tresorie") %>% 
+         filter(Variable =="Tresorerie") %>% 
          mutate(date = as.Date(date))) +
   geom_line(aes(x = date, y = Valeur, color = Variable), show.legend = TRUE)+
   labs(
@@ -322,11 +322,11 @@ ggplot(data = EncoursCredit %>%
 SourceEndettementContribution <- ggplot(data = EndettementSource) +
   geom_bar(data = EndettementSource %>% 
              filter(Variable %in% c("TitresCT", "TitresLT", "Credit")), 
-           aes(x = as.Date(date), y = Contribution, fill = Variable), 
+           aes(x = as.Date(date), y = ContribAnnuelle, fill = Variable), 
            position = "stack", stat = "identity") +  
   geom_line(data = EndettementSource %>% 
               filter(Variable =="Total"),
-            aes(x = as.Date(date), y = Contribution),
+            aes(x = as.Date(date), y = ContribAnnuelle),
             color = "black", size = 0.6) +
   labs(
     caption = "Source: Banque de France
@@ -348,11 +348,11 @@ SourceEndettementContribution
 SourceEndettementContribution2 <- ggplot(data = EndettementSource) +
   geom_bar(data = EndettementSource %>% 
              filter(Variable %in% c("TitresCT", "TitresLT", "Credit")), 
-           aes(x = as.Date(date), y = Contribution, fill = Variable), 
+           aes(x = as.Date(date), y = ContribAnnuelle, fill = Variable), 
            position = "stack", stat = "identity") +  
   geom_line(data = EndettementSource %>% 
               filter(Variable =="Total"),
-            aes(x = as.Date(date), y = Contribution),
+            aes(x = as.Date(date), y = ContribAnnuelle),
             color = "black", size = 0.6) +
   labs(
     caption = "Source: Banque de France
@@ -459,114 +459,105 @@ PartTitre
 
 ## 8.1. Croissance des crédits ---------------------------
 
-ggplot(data = DataCredit) +
-  geom_line(aes(x = as.Date(date), y = CroissanceCreditTotal, color = "Taux de croissance annuelle des crédits"), size = 1) +
-  geom_line(aes(x = as.Date(date), y = TauxCreditTotal, color = "Taux d'intérêt annuel des nouveaux crédits"), size = 1) +
+ggplot(data = FinancementCreditMarche) +
+  geom_line(aes(x = as.Date(date), y = CroissanceCredit, color = "Taux de croissance annuelle des crédits")) +
+  geom_line(aes(x = as.Date(date), y = CoutCredit, color = "Taux d'intérêt annuel des nouveaux crédits")) +
   labs(
-    caption = "",
-    y = NULL,
+    caption = "Source: Banque de France",
+    y = "en %",
     x = NULL,
     color = NULL
   ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size = 8.5)) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2017-01-01", max(DataCredit$date))), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(-1.5, 13.5), labels = scales::label_number(decimal.mark = ",")) +
+  scale_x_date(limits = as.Date(c("2019-01-01", max(FinancementCreditMarche$date))), expand = c(0, 0)) +
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",")) +
   scale_color_manual(
     values = c("Taux de croissance annuelle des crédits" = "blue", 
-               "Taux d'intérêt annuel des nouveaux crédits" = "red"))
+               "Taux d'intérêt annuel des nouveaux crédits" = "red")) +
+  ggtitle("Croissance annuelle et coût des crédits bancaires")
 
-CroissanceTaux
 
 ## 8.2. Croissance des titres de dette ---------------------------
 
-CroissanceTauxTitreDette<- ggplot(data = DataCredit) +
-  geom_line(aes(x = as.Date(date), y = TauxTitreDette, color = "Titres de dette émis par les SNF, taux d'intérêt annuel"), show.legend = TRUE) +
-  geom_line(aes(x = as.Date(date), y = CroissanceTitres, color = "Titres de dette émis par les SNF, croissance annuelle des encours"), show.legend = TRUE) +
+ggplot(data = FinancementCreditMarche) +
+  geom_line(aes(x = as.Date(date), y = CroissanceTitres, color = "Taux de croissance annuelle des titres de dette émis par les SNF")) +
+  geom_line(aes(x = as.Date(date), y = CoutTitreDette, color = "Taux d'intérêt annuel")) +
   labs(
-    caption = "",
-    y = NULL,
+    caption = "Source: Banque de France",
+    y = "en %",
     x = NULL,
     color = NULL
   ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size = 8.5)) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2018-01-01", max(DataCredit$date))), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(-10, 20), labels = scales::label_number(decimal.mark = ",")) +
-  scale_color_manual(name = NULL,
-                     labels = c("Croissance annuelle des titres",
-                                "Taux d'intérêt annuel"),
-                     values = c("blue", "red")) +  # Specify color values for the two lines
-  ggtitle("Titres de dette émis par les SNF")
+  scale_x_date(limits = as.Date(c("2019-01-01", max(FinancementCreditMarche$date))), expand = c(0, 0)) +
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",")) +
+  scale_color_manual(
+    values = c("Taux de croissance annuelle des titres de dette émis par les SNF" = "blue", 
+               "Taux d'intérêt annuel" = "red")) +
+  ggtitle("Croissance annuelle et coût des titres de dette émis par les SNF")
 
-CroissanceTauxTitreDette
+
 
 ## 8.3. Comparaison des 2 ---------------------------
 
-CroissanceEncoursTitre<- ggplot(data = DataCredit) +
-  geom_line(aes(x = as.Date(date), y = CroissanceCreditTotal , color = "Crédits accordés aux sociétés non financières résidentes, croissance annuelle"), show.legend = TRUE) +
-  geom_line(aes(x = as.Date(date), y = CroissanceTitres, color = "Titres de dette émis par les SNF, croissance annuelle des encours"), show.legend = TRUE) +
+CroissanceEncoursTitre<- ggplot(data = FinancementCreditMarche) +
+  geom_line(aes(x = as.Date(date), y = CroissanceCredit , color = "Crédits accordés aux SNF résidentes, croissance annuelle")) +
+  geom_line(aes(x = as.Date(date), y = CroissanceTitres, color = "Titres de dette émis par les SNF, croissance annuelle des encours")) +
   labs(
-    caption = "",
-    y = NULL,
+    caption = "Source: Banque de France",
+    y = "en %",
     x = NULL,
     color = NULL
   ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size = 8.5)) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2011-01-01", max(DataCredit$date))), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(-10, 17), labels = scales::label_number(decimal.mark = ",")) +
-  scale_color_manual(name = NULL,
-                     labels = c("Croissance encours de crédit",
-                                "Croissance des titres de dette"),
-                     values = c("blue", "red")) +  # Specify color values for the two lines
+  scale_x_date(limits = as.Date(c("2019-01-01", max(FinancementCreditMarche$date))), expand = c(0, 0)) +
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",")) +
   ggtitle("Financement des SNF")
 
 CroissanceEncoursTitre
 
 ## 8.4. Spread ---------------------------
 
-SpreadTaux<- ggplot(data = DataCredit) +
-  geom_line(aes(x = as.Date(date), y = TauxTitreDette, color = " taux d'intérêt annuel des titres de dettes"), show.legend = TRUE) +
-  geom_line(aes(x = as.Date(date), y = TauxCreditTotal, color = "taux d'intérêt des nouveaux crédits"), show.legend = TRUE) +
+SpreadTaux <- ggplot(data = FinancementCreditMarche) +
+  geom_line(aes(x = as.Date(date), y = CoutCredit, color = "Taux d'intérêt des nouveaux crédits")) +
+  geom_line(aes(x = as.Date(date), y = CoutTitreDette, color = "Taux d'intérêt annuel des titres de dettes")) +
   labs(
-    caption = "",
-    y = NULL,
+    caption = "Source: Banque de France",
+    y = "en %",
     x = NULL,
     color = NULL
   ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size = 8.5)) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2007-01-01", max(DataCredit$date))), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(0, 6), labels = scales::label_number(decimal.mark = ",")) +
-  scale_color_manual(name = NULL,
-                     labels = c("taux d'intérêt annuel des titres de dettes",
-                                "taux d'intérêt des nouveaux crédits"),
-                     values = c("blue", "red")) +  # Specify color values for the two lines
-  ggtitle("spread de taux financement SNF")
+  scale_x_date(limits = as.Date(c("2019-01-01", max(FinancementCreditMarche$date))), expand = c(0, 0)) +
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",")) +
+  ggtitle("Spread de taux de financement des SNF")
 
 SpreadTaux
 
 ## 8.4. Différences de taux et de croissance ---------------------------
 
-CorrelationVariation<- ggplot(data = DataCredit) +
-  geom_line(aes(x = as.Date(date), y = SpreadTaux, color = " différence des taux"), show.legend = TRUE) +
-  geom_line(aes(x = as.Date(date), y = SpreadCroissance, color = "différence de variation"), show.legend = TRUE) +
+CorrelationVariation<- ggplot(data = FinancementCreditMarche) +
+  geom_line(aes(x = as.Date(date), y = SpreadTaux, color = " différence des taux (crédit - titre)")) +
+  geom_line(aes(x = as.Date(date), y = SpreadCroissance, color = "différence de variation (crédit - titre)")) +
   labs(
-    caption = "",
-    y = NULL,
+    caption = "Source: Banque de France",
+    y = "en pp",
     x = NULL,
     color = NULL
   ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size = 8.5)) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2011-01-01", max(DataCredit$date))), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(-16, 8), labels = scales::label_number(decimal.mark = ",")) +
+  scale_x_date(limits = as.Date(c("2019-01-01", max(FinancementCreditMarche$date))), expand = c(0, 0)) +
+  scale_y_continuous(labels = scales::label_number(decimal.mark = ",")) +
   scale_color_manual(name = NULL,
                      labels = c("différence de taux",
                                 "différence de variation"),
                      values = c("blue", "red")) +  
-  ggtitle("Elasticité Credit/Titre")
+  ggtitle("Différences de croissance et de taux entre crédits bancaires et titres de dette")
 
 CorrelationVariation
 
@@ -576,7 +567,7 @@ CorrelationVariation
 
 ## 9.1. Crédits ---------------------------
 
-CorrelationCredit <-ggplot(data = DataCredit%>%
+CorrelationCredit <-ggplot(data = FinancementCreditMarche%>%
                   filter(date >= "2019-01-01")) +
   geom_point(aes(x = CroissanceCreditTotal, y = TauxCreditTotal, color = as.factor(lubridate::year(date))),
              size = 3) +
@@ -589,7 +580,7 @@ CorrelationCredit <-ggplot(data = DataCredit%>%
   scale_color_manual(values = c("2019" = "#98F5FF", "2020" = "#53868B", 
                                 "2021" = "#8EE5EE", "2022" = "#7AC5CD", "2023" ="#00868B" , "2024"= "#2F4F4F")) + 
   theme_minimal() +
-  geom_text(data = DataCredit %>% filter(year(date) == 2023),
+  geom_text(data = FinancementCreditMarche %>% filter(year(date) == 2023),
             aes(label = format(date, "%m"), x = CroissanceCreditTotal, y = TauxCreditTotal),
             vjust = -1, size = 2.5) +
   geom_path(aes(x = CroissanceCreditTotal, y = TauxCreditTotal),
@@ -601,7 +592,7 @@ CorrelationCredit
 
 ## 9.2. Dette ---------------------------
 
-CorrelationDette <-ggplot(data = DataCredit%>%
+CorrelationDette <-ggplot(data = FinancementCreditMarche%>%
                             filter(date >= "2019-01-01")) +
   geom_point(aes(x = CroissanceTitres, y = TauxTitreDette, color = as.factor(lubridate::year(date))),
              size = 3) +
@@ -614,7 +605,7 @@ CorrelationDette <-ggplot(data = DataCredit%>%
   scale_color_manual(values = c("2019" = "#98F5FF", "2020" = "#53868B", 
                                 "2021" = "#8EE5EE", "2022" = "#7AC5CD", "2023" ="#00868B" , "2024"= "#2F4F4F")) + 
   theme_minimal() +
-  geom_text(data = DataCredit %>% filter(year(date) == 2023),
+  geom_text(data = FinancementCreditMarche %>% filter(year(date) == 2023),
             aes(label = format(date, "%m"), x = CroissanceTitres, y = TauxTitreDette),
             vjust = -1, size = 2.5) +
   geom_path(aes(x = CroissanceTitres, y = TauxTitreDette),
@@ -624,7 +615,7 @@ CorrelationDette
 
 ## 9.3. Crédit - années passées ---------------------------
 
-CorrelationPastCredit <- ggplot(data = DataCredit %>%
+CorrelationPastCredit <- ggplot(data = FinancementCreditMarche %>%
                                   filter(year(date) %in% c(2005, 2006, 2007, 2008, 2009, 2023))) +
   geom_point(aes(x = CroissanceCreditTotal, y = TauxCreditTotal, color = as.factor(year(date))),
              size = 3) +
@@ -644,7 +635,7 @@ CorrelationPastCredit
 
 ## 9.4. Crédit - toutes années ---------------------------
 
-CorrelationAllCredit <- ggplot(data = DataCredit, aes(x = CroissanceCreditTotal, y = TauxCreditTotal, color = as.factor(year(date)))) +
+CorrelationAllCredit <- ggplot(data = FinancementCreditMarche, aes(x = CroissanceCreditTotal, y = TauxCreditTotal, color = as.factor(year(date)))) +
   geom_point(size = 2) +
   labs(
     caption = "",
@@ -657,7 +648,7 @@ CorrelationAllCredit <- ggplot(data = DataCredit, aes(x = CroissanceCreditTotal,
 
 ## 9.5. Dette - toutes années ---------------------------
 
-CorrelationAllDette <- ggplot(data = DataCredit, aes(x = CroissanceTitres, y = TauxTitreDette, color = as.factor(year(date)))) +
+CorrelationAllDette <- ggplot(data = FinancementCreditMarche, aes(x = CroissanceTitres, y = TauxTitreDette, color = as.factor(year(date)))) +
   geom_point(size = 2) +
   labs(
     caption = "",
@@ -720,7 +711,7 @@ Conjoncture <- ggplot(data = Conjoncture) +
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size = 8.5)) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2012-04-01", max(DataCredit$date))), expand = c(0, 0)) +
+  scale_x_date(limits = as.Date(c("2012-04-01", max(FinancementCreditMarche$date))), expand = c(0, 0)) +
   scale_y_continuous(limits = c(78, 98), labels = scales::label_number(decimal.mark = ",")) +
   scale_color_manual(name = NULL, values = c("PME" = "blue", "EI" = "red"))
 
@@ -739,7 +730,7 @@ Flux <- ggplot(data = Flux) +
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial", size = 8.5)) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2018-01-01", max(DataCredit$date))), expand = c(0, 0)) +
+  scale_x_date(limits = as.Date(c("2018-01-01", max(FinancementCreditMarche$date))), expand = c(0, 0)) +
   scale_y_continuous(limits = c(-8000, 18000), labels = scales::label_number(decimal.mark = ",")) +
   scale_color_manual(name = NULL, values = c("Total" = "blue", "Treso" = "red", "Inv" = "black"))
 

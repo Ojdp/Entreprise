@@ -9,7 +9,7 @@ source("Entreprises_Insee_Data.R")
 
 # 1. VA par branches -------------------------------------------
 
-## 1.1. VA des SNF par branches -----------------------------------------------------
+## 1.1. VA par branches des entreprises marchandes non agricoles -----------------------------------------------------
 
 GraphVA  <-ggplot(data = dataVA) +
   geom_line(data = . %>% filter(
@@ -19,7 +19,7 @@ GraphVA  <-ggplot(data = dataVA) +
     aes(x = DATE, y = Index, color = name), show.legend = TRUE) +
   labs(
     caption = "Source: Insee",
-    y = NULL,
+    y = "en millions d'euros (Index T4:2019 = 100)",
     x = NULL,
     color = NULL
   ) +
@@ -27,32 +27,31 @@ GraphVA  <-ggplot(data = dataVA) +
   theme(legend.position = "bottom") +
   scale_x_date(limits = as.Date(c("2011-01-01", max(dataVA$DATE))), expand = c(0, 0)) +
   scale_y_continuous(limits = c(60, 125), oob = scales::squish, labels = scales::label_number(decimal.mark = ",")) +
-  ggtitle("France: Valeur ajoutée des SNF par branches, (Index T4:2019 = 100")
+  ggtitle("VA par branches des entreprises marchandes non agricoles, en volume (Index T4:2019 = 100)")
 
 GraphVA
 
 
-## 1.2. VA des SNF marchandes non agricoles  -----------------------------------------------------
+## 1.2. VA des entreprises marchandes non agricoles  -----------------------------------------------------
 
-### Valeur -----------------------------------
+### Millions d'euros -----------------------------------
 ggplot(data=dataVA %>%
          filter(TITLE_FR1 == "Valeur ajoutée des branches")%>%
          filter(name == "Marchand non agricole"),
        aes(x=DATE,y=value)) +
   geom_line(aes(color= name))+
   labs(
-    caption = NULL,
-    y = NULL,
+    caption = "Source: Insee",
+    y = "en millions d'euros",
     x = NULL,
     color = NULL
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
   scale_x_date(limits = as.Date(c("2011-01-01", max(dataVA$DATE))), expand = c(0, 0)) +
-  scale_y_continuous(name = "% de la VA", 
-                     limits = c(320000, 441939), 
+  scale_y_continuous(limits = c(320000, 450000), 
                      labels = scales::label_number(accuracy = 1, scale = 1, decimal.mark = ',')) +
-  ggtitle("France: Valeur ajoutée des SNF Marchand non agri")+
+  ggtitle("Valeur ajoutée des entreprises des secteurs marchands non agricoles, en volume") +
   scale_color_discrete() 
 
 ### Croissance ---------------------------------
@@ -60,20 +59,18 @@ ggplot(data=dataVA %>%
          filter(TITLE_FR1 == "Valeur ajoutée des branches")%>%
          filter(name == "Marchand non agricole"),
        aes(x=DATE,y=Croissance)) +
-  geom_line(aes(color= name))+
+  geom_line(aes(color= name)) +
   labs(
-    caption = NULL,
-    y = NULL,
+    caption = "Source: Insee",
+    y = "en %",
     x = NULL,
     color = NULL
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
   scale_x_date(limits = as.Date(c("2011-01-01", max(dataVA$DATE))), expand = c(0, 0)) +
-  scale_y_continuous(name = "% de la VA", 
-                     limits = c(-10, 15), 
-                     labels = scales::label_number(accuracy = 1, scale = 1, decimal.mark = ',')) +
-  ggtitle("France: Valeur ajoutée Marchand non agri")+
+  scale_y_continuous(labels = scales::label_number(accuracy = 1, scale = 1, decimal.mark = ',')) +
+  ggtitle("Croissance de la VA des entreprises des secteurs marchands non agricoles")+
   scale_color_discrete() 
 
 
@@ -84,53 +81,108 @@ ggplot(data=dataEBE %>%
        aes(x=DATE,y=Index)) +
   geom_line(aes(color= name))+
   labs(
-    caption = NULL,
-    y = NULL,
+    caption = "Source: Insee",
+    y = "en millions d'euros (Index T4:2019 = 100)",
     x = NULL,
     color = NULL
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
   scale_x_date(limits = as.Date(c("2011-01-01", max(dataEBE$DATE))), expand = c(0, 0)) +
-  scale_y_continuous(name = "% de la VA", 
-                     limits = c(85, 130), 
+  scale_y_continuous(limits = c(85, 130), 
                      labels = scales::label_number(accuracy = 1, scale = 1, decimal.mark = ',')) +
-  ggtitle("Excédent brut d'exploitation des sociétés non financières")+
+  ggtitle("Excédent brut d'exploitation des entreprises des secteurs marchands non agricoles (Index T4:2019 = 100)")+
   scale_color_discrete() 
 
 
 # 3. Marges -------------------------------------------
 
-GraphPrev <- ggplot(data=Marge %>% filter(name %in% c("Autres branches industrielles", "Commerce", "Construction", 
-                                                   "Services aux entreprises", "Hébergement-restauration","Industries agro-alimentaires","Énergie, eau, déchets",
-                                                   "Service Immobiliers","Information-communication", "Services financiers", "Transport", "Biens d'équipement", "Matériels de transport", "Services aux ménages")),
-                 aes(x = DATE, y = value, fill = name)) +
+## 3.1. Contribution à la croissance du taux de marge -----------------------------------------------------
+
+### Tous secteurs -----------------------------------
+GraphMargeContrib <- ggplot(
+  data = dataMarge %>% filter(name %in% c("Autres branches industrielles", "Commerce", "Construction", 
+                                     "Services aux entreprises", "Hébergement-restauration","Industries agro-alimentaires",
+                                     "Énergie, eau, déchets","Services immobiliers","Information-communication", "Services financiers", 
+                                     "Transport", "Biens d'équipement", "Matériels de transport", "Services aux ménages")),
+                 aes(x = DATE, y = ContributionDateBase, fill = name)
+  ) +
   geom_bar(position = "stack", stat = "identity") + 
-  geom_line(data = Marge %>% 
-              filter(name == "Marchand non agricole"),
-            aes(x = DATE, y = value), show.legend = FALSE)  +
+  geom_line(data = dataMarge %>% filter(name == "Marchand non agricole"),
+            aes(x = DATE, y = ContributionDateBase))  +
   labs(
-    title = "Contributions to Growth",
-    x = "",
-    y = "Contribution (en pp)"
+    x = NULL,
+    y = "Contribution par rapport au T4:2018 (en pp)"
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
-  theme(legend.position = "bottom",
-        legend.title = element_text(size = 9),  # Adjust legend title size
-        legend.text = element_text(size = 6)) +  # Adjust legend text size # 
-  scale_x_date(limits = as.Date(c("2018-11-01", max(Marge$DATE))), date_labels = "%Y-%m-%d", breaks = "1 years") +
-  scale_y_continuous(limits = c(min(Marge$value), 5), labels = scales::label_number(decimal.mark = ",")) +
+  theme(legend.position = "bottom") +
+  scale_x_date(limits = as.Date(c("2018-11-01", max(dataMarge$DATE))), 
+               date_labels = "%Y-%m-%d", breaks = "1 years") +
+  scale_y_continuous(limits = c(min(dataMarge$ContributionDateBase[dataMarge$DATE>"2018-11-01"]), max(dataMarge$ContributionDateBase[dataMarge$DATE>"2018-11-01"])), 
+                     labels = scales::label_number(decimal.mark = ",")) +
   theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
   guides(fill = guide_legend(title = NULL)) +
-  ggtitle(" Contribution à la croissance du taux de marge par branche relativement à la moyenne de 2018")
+  ggtitle("Contribution à la croissance du taux de marge par branche")
 
-GraphPrev
-
+GraphMargeContrib
 # ggsave(filename = "C:/Users/153003/Documents/Entreprise/GraphPrev.png", plot = GraphPrev, width = 8, height = 6, units = "in")
 # ggsave(filename = "C:/Users/153003/Documents/Entreprise/GraphPrev.svg", plot = GraphPrev, width = 16, height = 8, units = "in")
 
 
+### Secteurs agrégés -----------------------------------
+GraphMargeContribAg <- ggplot(
+  data = dataMarge %>% filter(name %in% c("Construction", "Industrie", "Services principalement marchands")),
+  aes(x = DATE, y = ContributionDateBase, fill = name)
+) +
+  geom_bar(position = "stack", stat = "identity") + 
+  geom_line(data = dataMarge %>% filter(name == "Marchand non agricole"),
+            aes(x = DATE, y = ContributionDateBase))  +
+  labs(
+    x = NULL,
+    y = "Contribution par rapport au T4:2018 (en pp)"
+  ) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
+  theme(legend.position = "bottom") +
+  scale_x_date(limits = as.Date(c("2018-11-01", max(dataMarge$DATE))), 
+               date_labels = "%Y-%m-%d", breaks = "1 years") +
+  scale_y_continuous(limits = c(min(dataMarge$ContributionDateBase[dataMarge$DATE>"2018-11-01"]), max(dataMarge$ContributionDateBase[dataMarge$DATE>"2018-11-01"])), 
+                     labels = scales::label_number(decimal.mark = ",")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
+  guides(fill = guide_legend(title = NULL)) +
+  ggtitle("Contribution à la croissance du taux de marge par branche")
 
+GraphMargeContribAg
+
+# Ne marche pas
+GraphMargeContribAg <- ggplot(
+    data = dataMarge %>% filter(name %in% c("Construction", "Énergie, eau, déchets", "Biens manufacturés", "Services principalement marchands")),
+    aes(x = DATE, y = ContributionDateBase, fill = name)
+  ) +
+  geom_bar(position = "stack", stat = "identity") + 
+  geom_line(data = dataMarge %>% filter(name == "Marchand non agricole"),
+            aes(x = DATE, y = ContributionDateBase))  +
+  labs(
+    x = NULL,
+    y = "Contribution par rapport au T4:2018 (en pp)"
+  ) +
+  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
+  theme(legend.position = "bottom") +
+  scale_x_date(limits = as.Date(c("2018-11-01", max(dataMarge$DATE))), 
+               date_labels = "%Y-%m-%d", breaks = "1 years") +
+  scale_y_continuous(limits = c(min(dataMarge$ContributionDateBase[dataMarge$DATE>"2018-11-01"]), max(dataMarge$ContributionDateBase[dataMarge$DATE>"2018-11-01"])), 
+                     labels = scales::label_number(decimal.mark = ",")) +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  
+  guides(fill = guide_legend(title = NULL)) +
+  ggtitle("Contribution à la croissance du taux de marge par branche")
+
+GraphMargeContribAg
+
+
+# Avec son excel
+file_path <- "C:/Users/179047/Documents/Github/Entreprise/Marge.xlsx" 
+Marge <- read_excel(file_path) %>%
+  pivot_longer(cols = -c(DATE)) %>%
+  mutate(DATE = as.Date(DATE))
 GraphRepere <- ggplot(data=Marge %>% filter(name %in% c( "Construction","Énergie, eau, déchets",
                                                          "Manufacturier", "Services principalement marchands")),
                       aes(x = DATE, y = value, fill = name)) +
@@ -159,83 +211,52 @@ GraphRepere
 # ggsave(filename = "C:/Users/153003/Documents/Entreprise/GraphRepere.svg", plot = GraphRepere, width = 16, height = 8, units = "in")
 
 
-GraphMargeIndex <- ggplot(data = datamarge) +
-  geom_line(data = . %>% filter(OPERATION_label_fr == "Marge" & 
-                                  name %in% c("Industries agro-alimentaires", "Commerce", "Construction", 
-                                              "Information-communication", 
-                                              "Services principalement marchands", "Industrie")),
-            aes(x = DATE, y = Index, color = name), show.legend = TRUE) +
+
+## 3.2. Taux de marge par branche -----------------------------------------------------
+
+### Index -----------------------------------
+GraphMargeIndex <- ggplot(data = dataMarge) +
+  geom_line(data = . %>% filter(
+    name %in% c("Industries agro-alimentaires", "Commerce", "Construction", "Information-communication", 
+                "Services principalement marchands", "Industrie")),
+    aes(x = DATE, y = Index, color = name), show.legend = TRUE) +
   labs(
     caption = "Source: Insee",
-    y = NULL,
+    y = "(Index T4:2019 = 100)",
     x = NULL,
     color = NULL
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2011-01-01", max(datamarge$DATE))), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(60, 170), oob = scales::squish, labels = scales::label_number(decimal.mark = ",")) +
-  ggtitle("France: Marge Index par rapport au T4:2019")
+  scale_x_date(limits = as.Date(c("2011-01-01", max(dataMarge$DATE))), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(70, 140), 
+                     oob = scales::squish, 
+                     labels = scales::label_number(decimal.mark = ",")) +
+  ggtitle("Taux de marge par branches des entreprises marchandes non agricoles (Index T4:2019 = 100)")
 
+GraphMargeIndex
 
-GraphMargeVA <- ggplot(data = marge_rows) +
-  geom_line(data = . %>% 
-              filter(name %in% c("Industries agro-alimentaires", "Commerce", "Construction", "Information-communication", "Hébergement-restauration", "Services principalement marchands", "Industrie"),
-                     OPERATION_label_fr == "Marge"),
-            aes(x = DATE, y = value, color = name), show.legend = TRUE) +
+### % de la VA -----------------------------------
+GraphMargeVA <- ggplot(data = dataMarge) +
+  geom_line(data = . %>% filter(
+    name %in% c("Industries agro-alimentaires", "Commerce", "Construction", "Information-communication", 
+                "Services principalement marchands", "Industrie")),
+    aes(x = DATE, y = TxMarge, color = name), show.legend = TRUE) +
   labs(
     caption = "Source: Insee.",
-    y = NULL,
+    y = "En % de la VA",
     x = NULL,
     color = NULL
   ) +
   theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
   theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2011-01-01", max(datamarge$DATE))), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(15, 80), oob = scales::squish, labels = scales::label_number(decimal.mark = ",")) +
-  ggtitle("France: Marge en % de la VA")
+  scale_x_date(limits = as.Date(c("2011-01-01", max(dataMarge$DATE))), expand = c(0, 0)) +
+  scale_y_continuous(limits = c(20, 60), 
+                     oob = scales::squish, 
+                     labels = scales::label_number(decimal.mark = ",")) +
+  ggtitle("Taux de marge par branches des entreprises marchandes non agricoles")
 
-
-ggplot(data=datamarge %>% filter(OPERATION_label_fr == "B2 - Excédent d'exploitation" & 
-                                   name %in% c("Service Immobiliers", "Commerce", "Construction", 
-                                               "Services aux entreprises", "Industrie", "Information-communication")),
-       aes(x = DATE, y = Contribution, fill = name)) +
-  geom_bar(position = "stack", stat = "identity") +  # Create a stacked bar chart
-  labs(
-    title = "Contributions to Growth",
-    x = "",
-    y = "Contribution (%)"
-  ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
-  theme(legend.position = "bottom") +  
-  scale_x_date(limits = as.Date(c("2016-01-01", "2023-10-01")), date_labels = "%Y-%m-%d") +
-  scale_y_continuous(limits = c(-10, 12), labels = scales::label_number(decimal.mark = ",")) +
-  theme(axis.text.x = element_text(angle = 45, hjust = 1)) +  # Rotate x-axis labels for better readability
-  ggtitle("France: Contribution à la croissance de l'EBE par branche, en %")
-
-
-
-GraphFBCFmarge1 <- ggplot(data=marge_rows %>% filter(name %in% c("Total","Industries agro-alimentaires", "Commerce", "Construction", "Information-communication", "Hébergement-restauration", "Services principalement marchands", "Industrie"))) +
-  geom_line(aes(x = DATE, y = Index, color = name), show.legend = TRUE)+
-  labs(
-    caption = "Source: Insee.",
-    y = NULL,
-    x = NULL,
-    color = NULL
-  ) +
-  theme_ofce(panel.background = element_blank(), text = element_text(family = "Arial")) +
-  theme(legend.position = "bottom") +
-  scale_x_date(limits = as.Date(c("2011-01-01", max(dataFBCF.raul$DATE))), expand = c(0, 0)) +
-  scale_y_continuous(limits = c(60, 140), labels = scales::label_number(decimal.mark = ",")) +
-  # scale_color_manual(name = "Légende des séries",  # Nom de la légende pour les séries de données
-  # values = c("SNF" = "green", "Ménages" = "red", "APU" = "blue", "Total" = "black")) +
-  ggtitle("France: Marge des SNF en Indice T42019=100")
-
-print(GraphFBCFmarge1)
-# ggsave(filename = "C:/Users/153003/Documents/Entreprise/GraphFBCFmarge1.png", plot = GraphFBCFmarge1, width = 8, height = 6, units = "in")
-
-
-
+GraphMargeVA
 
 
 
@@ -518,8 +539,8 @@ moyenne_Autofinancement <- dataTotal %>%
 # 6. Avec prévisions -------------------------------------------
 
 GraphPrev<- ggplot(data = dataPrev) +
-  geom_line(aes(x = DATE, y = value, color = name, linetype = ifelse(DATE < as.Date("2024-03-01"), "dotted", "solid")), show.legend = TRUE) +
-  geom_vline(xintercept = as.numeric(as.Date("2024-03-01")), color = "grey", linetype = "solid", alpha = 0.25) +
+  geom_line(aes(x = DATE, y = value, color = name, linetype = ifelse(DATE < as.Date("2024-11-01"), "dotted", "solid")), show.legend = TRUE) +
+  geom_vline(xintercept = as.numeric(as.Date("2024-11-01")), color = "grey", linetype = "solid", alpha = 0.25) +
   labs(
     caption = NULL,
     y = NULL,
@@ -536,7 +557,7 @@ GraphPrev<- ggplot(data = dataPrev) +
   ) +
   scale_color_discrete(labels = c("Tx_Invest" = "Taux d'investissement", "Tx_Marge" = "Taux de Marge")) +
   guides(linetype = FALSE) +
-  annotate("rect", xmin = as.Date("2024-07-01"), xmax = as.Date("2026-01-01"), 
+  annotate("rect", xmin = as.Date("2024-11-01"), xmax = as.Date("2026-10-01"), 
            ymin = -Inf, ymax = Inf, alpha = 0.2, fill = "gray")+
   ggtitle("Taux d'investissement et de marge des entreprises (en % de la VA)")
 
